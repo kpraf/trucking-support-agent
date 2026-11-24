@@ -13,7 +13,7 @@ MANILA = ZoneInfo("Asia/Manila")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/trucking")
 APP_ENV = os.getenv("APP_ENV", "dev")
 
-COMPANY_NAME = "Timog Freight"
+COMPANY_NAME = "Southlane Trucking"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
