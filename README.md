@@ -32,4 +32,24 @@ The main focus is evaluation: a test suite of about 120 tasks, written by a nati
 
 ## Running locally
 
-Coming soon.
+Needs [uv](https://docs.astral.sh/uv/) and Docker.
+
+```bash
+cp .env.example .env
+docker compose up -d                       # Postgres 16 on localhost:5433
+uv sync                                    # Python 3.12 + dependencies
+uv run python -m app.db.seed               # reset and seed ~200 fake shipments
+uv run uvicorn app.api.main:app --reload
+```
+
+Then open http://localhost:8000/dev/shipments/TRK-10001 (or `/docs` for all routes).
+
+The seed is deterministic: the same `--today` and `--seed` always give the same data, e.g.
+`uv run python -m app.db.seed --today 2026-12-02 --seed 42`. Set `APP_TODAY` in `.env` to pin
+the business date for eval runs.
+
+`/dev/*` routes skip identity checks and show full details. They are for debugging only and are
+turned off when `APP_ENV=prod`.
+
+Tests: `uv run pytest`. The API tests use a separate `trucking_test` database and are skipped
+when Postgres isn't running.
