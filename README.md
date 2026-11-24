@@ -20,6 +20,10 @@ The main focus is evaluation: a test suite of about 120 tasks, written by a nati
 - **Frontend:** React, Tailwind
 - **Evals:** LLM-simulated customers, scripted attacks, database end-state grading
 
+## Architecture
+
+![Architecture: every write passes Python rule checks before it reaches the database](assets/architecture.webp)
+
 ## Results
 
 | Version | Success: English | Success: Taglish | Success: Tagalog | pass^3 | Unsafe writes |
