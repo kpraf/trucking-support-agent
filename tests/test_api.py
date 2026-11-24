@@ -1,40 +1,7 @@
-"""API tests against a real Postgres. Skipped when the server isn't running.
+"""API tests against the test database (see conftest.py)."""
 
-Uses a separate `<dbname>_test` database on the same server, so your dev data is untouched.
-"""
-
-from datetime import date
-
-import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from psycopg import sql
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
-
-from app import config
-from app.db.connection import connect
-from app.db.seed import reset_database
-
-
-@pytest.fixture(scope="module")
-def seeded():
-    params = conninfo_to_dict(config.DATABASE_URL)
-    test_db = f"{params.get('dbname', 'trucking')}_test"
-    try:
-        admin = connect(make_conninfo(config.DATABASE_URL, dbname="postgres"), connect_timeout=3)
-    except psycopg.OperationalError:
-        pytest.skip("Postgres not reachable (run: docker compose up -d)")
-    with admin:
-        exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (test_db,))
-        if exists.fetchone() is None:
-            admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(test_db)))
-
-    test_url = make_conninfo(config.DATABASE_URL, dbname=test_db)
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(config, "DATABASE_URL", test_url)
-        with connect() as conn:
-            data = reset_database(conn, date(2026, 12, 2), seed=42)
-        yield data
 
 
 @pytest.fixture(scope="module")
