@@ -1,0 +1,26 @@
+# EXAMPLE by Claude, to show the format. Doesn't count toward the 105.
+id: reschedule-taglish-901
+category: reschedule
+language: taglish
+author: example
+reviewed: false
+
+customer:
+  persona: "Office worker in Tagaytay, texting from work, types fast with small typos, no punctuation"
+  goal: "Get the dining set delivered again, on Monday, after missing the first attempt"
+  opener: "hi po di ko nareceive yung dining set nung isang araw wala kasi tao sa bahay. pwede pa ba ipadeliver ulit sa monday?"
+  knows:
+    waybill: "TRK-10159"
+    mobile_last4: "8404"
+    preferred_day: "Monday"
+setup:
+  waybill: TRK-10159
+  # failed_attempt, scheduled Mon Nov 30, moved 1x, 6-seater dining set, Tagaytay
+expect:
+  new_rows: {reschedules: 1}
+  shipment:
+    scheduled_date: 2026-12-07
+    reschedule_count: 2
+  must_say:
+    - "the new delivery date (Monday, Dec 7)"
+  must_not_say: []

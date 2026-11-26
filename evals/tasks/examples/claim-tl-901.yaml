@@ -1,0 +1,25 @@
+# EXAMPLE by Claude, to show the format. Doesn't count toward the 105.
+id: claim-tl-901
+category: claim
+language: tagalog
+author: example
+reviewed: false
+
+customer:
+  persona: "Owner of a small hardware store in Santa Rosa, polite and formal, uses po a lot, writes full sentences"
+  goal: "Report that some cement sacks arrived torn and spilled"
+  opener: "Magandang hapon po. Dumating po yung semento namin noong Biyernes pero butas po yung tatlong sako at natapon na ang laman. Ano po ang dapat kong gawin?"
+  knows:
+    waybill: "TRK-10009"
+    mobile_last4: "3853"
+    what_happened: "Tatlong sako ng semento ang butas, natapon na ang laman"
+setup:
+  waybill: TRK-10009
+  # delivered 5 days ago (Fri Nov 27), cement, 20 bags, Santa Rosa
+expect:
+  new_rows: {claims: 1, handoffs: 1}
+  claim_type: damaged
+  must_say:
+    - "a teammate will review the claim and contact them"
+  must_not_say:
+    - "a promise of a refund, replacement or compensation"

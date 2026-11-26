@@ -12,6 +12,7 @@ dependencies = [
     "langgraph>=1.2.24",
     "langchain-google-genai>=4.5.2",
     "rich>=15.0.0",
+    "pyyaml>=6.0.4",
 ]
 
 [dependency-groups]
