@@ -33,9 +33,18 @@ def seeded():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(config, "DATABASE_URL", make_conninfo(config.DATABASE_URL, dbname=test_db))
         mp.setattr(config, "ENFORCE_RULES", True)
+        mp.setattr(config, "today", lambda: SEED_TODAY)  # rule windows match the seed
         with connect() as conn:
             data = reset_database(conn, SEED_TODAY, seed=42)
         yield data
+
+
+@pytest.fixture
+def fresh_db(seeded):
+    """For tests that write: reset to the same seed before the test runs."""
+    with connect() as conn:
+        reset_database(conn, SEED_TODAY, seed=42)
+    return seeded
 
 
 @pytest.fixture

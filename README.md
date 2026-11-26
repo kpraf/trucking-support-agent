@@ -21,6 +21,10 @@ Real runs of the CLI on Gemini (`gemini-3.5-flash-lite`), tool calls shown. Data
 
 ![Agent verifies the receiver before showing the delivery status](assets/demo-status.svg)
 
+**Reschedule in Taglish.** Only allowed dates are offered, and nothing is saved until the customer says "oo". The rule is enforced in code: the write tool only runs on a later turn, after a clear yes.
+
+![Agent reschedules a delivery only after the customer confirms](assets/demo-reschedule.svg)
+
 **Refusals.** An impostor asking for the address, a prompt injection, and an out-of-scope rate question.
 
 ![Agent refuses an impostor, a prompt injection, and a rates question](assets/demo-refusals.svg)

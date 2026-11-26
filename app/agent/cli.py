@@ -47,7 +47,9 @@ class Output:
         self.copy.save_svg(path, title=title, theme=MONOKAI)
 
 
-def show_turn(out: Output, state: dict, seen: int, debug: bool, seconds: float):
+def show_turn(
+    out: Output, state: dict, seen: int, debug: bool, seconds: float, was_handed_off: bool
+):
     if debug:
         for msg in state["messages"][seen:]:
             if isinstance(msg, AIMessage):
@@ -56,18 +58,26 @@ def show_turn(out: Output, state: dict, seen: int, debug: bool, seconds: float):
                     out.print(f"  [cyan]-> {call['name']}[/]({args})")
             elif isinstance(msg, ToolMessage):
                 data = json.loads(msg.content)
-                color = "green" if data.get("ok") else "red"
+                color = (
+                    "green"
+                    if data.get("ok")
+                    else ("yellow" if data.get("reason") == "CONFIRMATION_REQUIRED" else "red")
+                )
                 # the model gets everything; the screen skips the long fields
                 shown = {k: v for k, v in data.items() if k not in HIDDEN_IN_DEBUG}
                 text = json.dumps(shown, ensure_ascii=False)
                 text = text if len(text) <= 400 else text[:400] + " ..."
                 out.print(f"  [{color}]<- {escape(text)}[/]")
         verified = ", ".join(state["verified_waybills"]) or "none"
+        pending = state.get("pending_action")
+        waiting = f" | waiting for yes: {pending['tool']}" if pending else ""
         out.print(
             f"  [dim]verified: {verified} | failed tries: {state['failed_verifications']}"
-            f" | {seconds:.1f}s[/]"
+            f"{waiting} | {seconds:.1f}s[/]"
         )
     out.print(f"[bold magenta]Agent:[/] {escape(reply_text(state))}\n")
+    if state.get("handed_off") and not was_handed_off:
+        out.print("[yellow](A human teammate has been notified and will continue this chat.)[/]\n")
 
 
 def main():
@@ -87,7 +97,7 @@ def main():
     out.print()
 
     scripted = list(args.say or [])
-    conversation_id, first, seen = str(uuid.uuid4()), True, 0
+    conversation_id, first, seen, handed_off = str(uuid.uuid4()), True, 0, False
     while True:
         if args.say:
             if not scripted:
@@ -106,7 +116,7 @@ def main():
         if text == "/quit":
             break
         if text == "/new":
-            conversation_id, first, seen = str(uuid.uuid4()), True, 0
+            conversation_id, first, seen, handed_off = str(uuid.uuid4()), True, 0, False
             out.print("[dim](new conversation)[/]\n")
             continue
 
@@ -114,7 +124,8 @@ def main():
         with out.screen.status("thinking...", spinner="dots"):
             state = send(graph, conversation_id, text, first=first)
         first = False
-        show_turn(out, state, seen, args.debug, time.monotonic() - start)
+        show_turn(out, state, seen, args.debug, time.monotonic() - start, handed_off)
+        handed_off = state.get("handed_off", False)
         seen = len(state["messages"])
 
     if args.record:

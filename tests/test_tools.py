@@ -88,7 +88,14 @@ def test_bad_arguments_and_unknown_tool(conn):
 
 def test_schemas_are_clean():
     names = {t["function"]["name"] for t in schemas()}
-    assert names == {"verify_receiver", "get_shipment_status"}
+    assert names == {
+        "verify_receiver",
+        "get_shipment_status",
+        "list_reschedule_slots",
+        "reschedule_delivery",
+        "open_claim",
+        "handoff_to_human",
+    }
     verify_schema = next(t for t in schemas() if t["function"]["name"] == "verify_receiver")
     assert verify_schema["function"]["parameters"]["required"] == ["waybill", "mobile_last4"]
 

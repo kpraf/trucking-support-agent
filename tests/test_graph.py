@@ -99,3 +99,53 @@ def test_tool_call_cap_per_turn(seeded):
     state = send(build_graph(model), "conv-4", "hi", first=True)
     assert reply_text(state) == "Pasensya na po."
     assert state["tool_calls_this_turn"] == MAX_TOOL_CALLS_PER_TURN
+
+
+def test_reschedule_lands_in_db_after_customer_says_oo(fresh_db, receivers):
+    """Week 3 done-when: a reschedule shows up in the database after the customer says yes."""
+    from app.db.connection import connect
+
+    s = next(x for x in fresh_db.shipments if x["status"] == "at_hub" and x["reschedule_count"] < 2)
+    wb, last4 = s["waybill"], receivers[s["receiver_id"]]["mobile"][-4:]
+    with connect() as conn:
+        from app.rules.checks import reschedule_dates
+        from tests.conftest import SEED_TODAY
+
+        new_date = next(d for d in reschedule_dates(SEED_TODAY) if d != s["scheduled_date"])
+    move = {"waybill": wb, "new_date": new_date.isoformat()}
+    model = ScriptedModel(
+        script=[
+            # turn 1: verify, look up slots, propose, and (wrongly) try to write straight away
+            tool_call("verify_receiver", {"waybill": wb, "mobile_last4": last4}, "a1"),
+            tool_call("list_reschedule_slots", {"waybill": wb}, "a2"),
+            tool_call("reschedule_delivery", move, "a3"),
+            tool_call("reschedule_delivery", move, "a4"),
+            AIMessage(content="Ililipat ko po sa ibang araw. Okay po ba?"),
+            # turn 2: customer said oo
+            tool_call("reschedule_delivery", move, "b1"),
+            AIMessage(content="Done na po!"),
+        ],
+        calls=[],
+    )
+    graph = build_graph(model)
+
+    state = send(graph, "conv-r", f"pwede ilipat? {wb} {last4}", first=True)
+    reasons = [r.get("reason") for r in tool_results(state)]
+    assert reasons[2:] == ["CONFIRMATION_REQUIRED", "CONFIRMATION_REQUIRED"]
+    with connect() as conn:
+        assert (
+            conn.execute(
+                "SELECT count(*) AS n FROM reschedules WHERE waybill = %s AND new_date = %s",
+                (wb, new_date),
+            ).fetchone()["n"]
+            == 0
+        )
+
+    state = send(graph, "conv-r", "oo sige po")
+    assert tool_results(state)[-1]["ok"]
+    assert state["pending_action"] is None
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT scheduled_date FROM shipments WHERE waybill = %s", (wb,)
+        ).fetchone()
+        assert row["scheduled_date"] == new_date

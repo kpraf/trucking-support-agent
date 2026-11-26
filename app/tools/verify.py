@@ -2,15 +2,17 @@ import re
 
 from pydantic import BaseModel, Field
 
+from app import config
 from app.db import queries
 from app.rules.checks import MAX_VERIFY_ATTEMPTS, Reason, check_can_try_verify
 from app.tools.base import Conn, Session, ToolResult, ok, refused
+from app.tools.handoff import create_handoff
 
 
 class VerifyReceiver(BaseModel):
     """Check that the customer is the receiver of a shipment. They must give the waybill
     number and the last 4 digits of the mobile number on the shipment. Call this before
-    sharing any shipment details."""
+    sharing any shipment details or making any change."""
 
     waybill: str = Field(description="Waybill number as the customer gave it, e.g. TRK-10293")
     mobile_last4: str = Field(description="Last 4 digits of the receiver's mobile number")
@@ -19,7 +21,7 @@ class VerifyReceiver(BaseModel):
 def verify_receiver(conn: Conn, session: Session, waybill: str, mobile_last4: str) -> ToolResult:
     if reason := check_can_try_verify(session.failed_verifications):
         return ToolResult(
-            refused(reason, "Too many failed tries. Do not try again: a human teammate must help.")
+            refused(reason, "Too many failed tries. A human teammate is taking over this chat.")
         )
 
     canonical = queries.normalize_waybill(waybill)
@@ -39,16 +41,18 @@ def verify_receiver(conn: Conn, session: Session, waybill: str, mobile_last4: st
     if shipment is None or not shipment["receiver_mobile"].endswith(digits):
         # Same answer for "no such waybill" and "wrong digits", so impostors learn nothing.
         failed = session.failed_verifications + 1
-        return ToolResult(
-            refused(
-                Reason.VERIFICATION_FAILED,
-                "The waybill and mobile digits do not match our records.",
-                tries_left=max(MAX_VERIFY_ATTEMPTS - failed, 0),
-            ),
-            {"failed_verifications": failed},
-        )
+        updates = {"failed_verifications": failed}
+        left = max(MAX_VERIFY_ATTEMPTS - failed, 0)
+        message = "The waybill and mobile digits do not match our records."
+        if config.ENFORCE_RULES and left == 0:
+            # Rule 1: after 3 failed tries, stop and hand off to a human.
+            if not session.handed_off:
+                create_handoff(conn, session, "verification failed 3 times", canonical)
+            updates["handed_off"] = True
+            message += " That was the last try: a human teammate is taking over this chat."
+        return ToolResult(refused(Reason.VERIFICATION_FAILED, message, tries_left=left), updates)
 
     return ToolResult(
-        ok(waybill=canonical, message="Verified. You can now share this shipment's status."),
+        ok(waybill=canonical, message="Verified. You can now share and change this shipment."),
         {"verified_waybills": [*session.verified_waybills, canonical]},
     )

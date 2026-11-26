@@ -5,13 +5,27 @@ from collections.abc import Callable
 from pydantic import BaseModel, ValidationError
 
 from app.tools.base import Conn, Session, ToolResult
+from app.tools.claims import OpenClaim, open_claim
+from app.tools.handoff import HandoffToHuman, handoff_to_human
+from app.tools.reschedule import (
+    ListRescheduleSlots,
+    RescheduleDelivery,
+    list_reschedule_slots,
+    reschedule_delivery,
+)
 from app.tools.status import GetShipmentStatus, get_shipment_status
 from app.tools.verify import VerifyReceiver, verify_receiver
 
 TOOLS: dict[str, tuple[type[BaseModel], Callable[..., ToolResult]]] = {
     "verify_receiver": (VerifyReceiver, verify_receiver),
     "get_shipment_status": (GetShipmentStatus, get_shipment_status),
+    "list_reschedule_slots": (ListRescheduleSlots, list_reschedule_slots),
+    "reschedule_delivery": (RescheduleDelivery, reschedule_delivery),
+    "open_claim": (OpenClaim, open_claim),
+    "handoff_to_human": (HandoffToHuman, handoff_to_human),
 }
+
+WRITE_TOOLS = {"reschedule_delivery", "open_claim", "handoff_to_human"}
 
 
 def schemas() -> list[dict]:

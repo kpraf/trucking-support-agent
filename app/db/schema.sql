@@ -60,6 +60,9 @@ CREATE TABLE claims (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- one open claim per shipment
+CREATE UNIQUE INDEX claims_one_open_idx ON claims (waybill) WHERE status IN ('open', 'in_review');
+
 -- waybill is nullable: a handoff after 3 failed verification tries may not have a valid waybill.
 CREATE TABLE handoffs (
     id               SERIAL PRIMARY KEY,
